@@ -20,8 +20,8 @@ def favicon():
 def hello():
    
    name = request.args.get('name')
-   
-   return f'Hello, {name}! Welcome to the world of Flask!'
+   city = request.args.get('city')
+   return f'Hello, {name} from {city}, ! Welcome to the world of Flask!'
 
    
 if __name__ == '__main__':
