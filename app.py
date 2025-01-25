@@ -30,7 +30,9 @@ def chat():
    print('Response from inference:', response)
    response = ResultParser(response).serialize()
    '''
-   return jsonify("Canned response for message: " + message) 
+   key = os.getenv("OPENAI_API_KEY")
+
+   return jsonify("Canned response for message: " + key) 
 
 if __name__ == '__main__':
    app.run()
