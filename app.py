@@ -31,7 +31,8 @@ def chat():
    response = ResultParser(response).serialize()
    '''
    key = os.getenv("OPENAI_API_KEY")
-
+   if key is None:
+       return jsonify("OPENAI_API_KEY not set")
    return jsonify("Canned response for message: " + key) 
 
 if __name__ == '__main__':
