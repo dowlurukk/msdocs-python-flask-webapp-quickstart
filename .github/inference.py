@@ -78,7 +78,6 @@ class Inference:
     Classify the given query into a category
     '''
     def classify_query(self, query):
-
         # Load a pre-trained model and tokenizer
         classifier = pipeline("zero-shot-classification", model="facebook/bart-large-mnli")
         # Use the classifier to predict the category
@@ -86,8 +85,6 @@ class Inference:
         # Get the category with the highest score
         category = result['labels'][0]
         return category
-
-
 
     '''
     Create a RAG chain 

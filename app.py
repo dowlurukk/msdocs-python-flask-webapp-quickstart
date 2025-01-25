@@ -1,5 +1,6 @@
 import os
-
+from inference import Inference
+from result_parser import ResultParser
 from flask import (Flask, redirect, render_template, request,jsonify,
                    send_from_directory, url_for)
 
@@ -23,17 +24,13 @@ def mainPage():
 def chat():
    message = request.args.get('message')
    print(f'Request for medcopilot /chat received message={message}')
-   '''
+   
    inference = Inference(storeLocation=vecstore_path)
    inference.create_rag_chains()
    response = inference.run_inference(message)
    print('Response from inference:', response)
    response = ResultParser(response).serialize()
-   '''
-   key = os.getenv("OPENAI_API_KEY")
-   if key is None:
-       return jsonify("OPENAI_API_KEY not set")
-   return jsonify("Canned response for message: " + key) 
+   return jsonify(response) 
 
 if __name__ == '__main__':
    app.run()
