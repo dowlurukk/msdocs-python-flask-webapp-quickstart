@@ -3,6 +3,9 @@
 #from tkinter import scrolledtext
 from datetime import datetime
 #import openai
+import pysqlite3
+import sys
+sys.modules["sqlite3"] = sys.modules.pop("pysqlite3")
 
 from langchain.chains import create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain

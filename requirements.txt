@@ -11,3 +11,4 @@ pypdf
 cryptography
 transformers
 PyMuPDF
+pysqlite3-binary
