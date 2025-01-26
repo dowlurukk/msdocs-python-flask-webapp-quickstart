@@ -1,6 +1,5 @@
 import os
-from inference import Inference
-from result_parser import ResultParser
+from runinference import Inference
 from flask import (Flask, redirect, render_template, request,jsonify,
                    send_from_directory, url_for)
 
@@ -29,8 +28,22 @@ def chat():
    inference.create_rag_chains()
    response = inference.run_inference(message)
    print('Response from inference:', response)
-   response = ResultParser(response).serialize()
+   response = serialize(response)
    return jsonify(response) 
+
+def serialize(lang_chain_result): 
+   context_list = []
+
+   for item in lang_chain_result['context']:
+      context_dict = {}
+      context_dict['metadata'] = item.metadata 
+      context_dict['page_content'] = item.page_content
+      context_list.append(context_dict)
+
+   
+   return {"input": lang_chain_result['input'],
+            "answer": lang_chain_result['answer'],
+            "context": context_list}
 
 if __name__ == '__main__':
    app.run()
