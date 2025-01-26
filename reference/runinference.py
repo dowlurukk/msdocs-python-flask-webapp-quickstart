@@ -39,12 +39,16 @@ categories = [
 
 class Inference:
     def __init__(self, storeLocation = "vectorstore"):
+        print(f"Initializing Inference with storeLocation: {storeLocation}")
         persist_directory = storeLocation
         vectorstore = Chroma(collection_name="medcopilot", persist_directory=persist_directory, embedding_function=OpenAIEmbeddings())
-        #TBD: How do we pass hints to the retriever to use the metadata for the search
-        retriever = vectorstore.as_retriever()
-        llm = ChatOpenAI(model="gpt-4o")
-        rag_chains = {}
+        
+        print(f"Vectorstore initialized with {len(vectorstore)} documents.")
+        
+        #TBD: Pass hints to the retriever to use the metadata for the search
+        self.retriever = vectorstore.as_retriever()
+        self.llm = ChatOpenAI(model="gpt-4o")
+        self.rag_chains = {}
 
 
     def run_inference(self, message):
