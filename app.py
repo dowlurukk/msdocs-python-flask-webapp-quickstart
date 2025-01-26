@@ -1,5 +1,5 @@
 import os
-import Inference
+from .runinference import Inference
 from flask import (Flask, redirect, render_template, request,jsonify,
                    send_from_directory, url_for)
 
