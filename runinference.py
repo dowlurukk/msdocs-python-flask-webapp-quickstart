@@ -39,9 +39,9 @@ class Inference:
         persist_directory = storeLocation
         vectorstore = Chroma(collection_name="medcopilot", persist_directory=persist_directory, embedding_function=OpenAIEmbeddings())
         #TBD: How do we pass hints to the retriever to use the metadata for the search
-        retriever = vectorstore.as_retriever()
-        llm = ChatOpenAI(model="gpt-4o")
-        rag_chains = {}
+        self.retriever = vectorstore.as_retriever()
+        self.llm = ChatOpenAI(model="gpt-4o")
+        self.rag_chains = {}
 
 
     def run_inference(self, message):
