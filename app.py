@@ -1,6 +1,6 @@
 import os
-from .inference import Inference
-from .result_parser import ResultParser
+from inference import Inference
+from result_parser import ResultParser
 from flask import (Flask, redirect, render_template, request,jsonify,
                    send_from_directory, url_for)
 
