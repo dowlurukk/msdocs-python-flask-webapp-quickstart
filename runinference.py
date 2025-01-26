@@ -45,12 +45,8 @@ class Inference:
 
 
     def run_inference(self, message):
-        try:
-            response = self.query_reasoning(message)
-            return response
-        except Exception as e:
-            print(f"Error processing request: {e}")
-            return f"An error occurred. Please try again later."
+        response = self.query_reasoning(message)
+        return response
 
     '''
     Query function to retrieve from the chain... 
@@ -67,7 +63,7 @@ class Inference:
             results = rag_chain.invoke({"input": question})
         except Exception as e:
             print(f"An error occurred: {e}")
-            results = {"context": "No context available", "answer": "Sorry, I couldn't process your request."}
+            results = {"context": "No context available", "answer": "Sorry, I couldn't process your request due to this error: " + str(e)}
 
         #print(results)
         #print(results["context"][0].page_content)

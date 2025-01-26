@@ -23,14 +23,18 @@ def mainPage():
 def chat():
    message = request.args.get('message')
    print(f'Request for medcopilot /chat received message={message}')
-   
-   inference = Inference(storeLocation=vecstore_path)
-   inference.create_rag_chains()
-   response = inference.run_inference(message)
-   print('Response from inference:', response)
-   response = serialize(response)
-   return jsonify(response) 
+   try:
+      inference = Inference(storeLocation=vecstore_path)
+      inference.create_rag_chains()
+      response = inference.run_inference(message)
+      print('Response from inference:', response)
+      response = serialize(response)
+   except Exception as e:
+      response = f"An error occurred. Please try again later. Error: {e}"
 
+   return jsonify(response)
+
+   
 def serialize(lang_chain_result): 
    context_list = []
 
