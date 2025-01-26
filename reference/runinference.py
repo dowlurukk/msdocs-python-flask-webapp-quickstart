@@ -43,7 +43,7 @@ class Inference:
         persist_directory = storeLocation
         vectorstore = Chroma(collection_name="medcopilot", persist_directory=persist_directory, embedding_function=OpenAIEmbeddings())
         
-        print(f"Vectorstore initialized with {len(vectorstore)} documents.")
+        print(f"Vectorstore initialized with documents.")
         
         #TBD: Pass hints to the retriever to use the metadata for the search
         self.retriever = vectorstore.as_retriever()
