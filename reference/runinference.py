@@ -37,69 +37,15 @@ categories = [
     "Prevention and Screening",
 ]
 
-class Inference:
-    def __init__(self, storeLocation = "vectorstore"):
-        print(f"Initializing Inference with storeLocation: {storeLocation}")
-        persist_directory = storeLocation
-        vectorstore = Chroma(collection_name="medcopilot", persist_directory=persist_directory, embedding_function=OpenAIEmbeddings())
-        
-        print(f"Vectorstore initialized with documents.")
-        
-        #TBD: Pass hints to the retriever to use the metadata for the search
-        self.retriever = vectorstore.as_retriever()
-        self.llm = ChatOpenAI(model="gpt-4o")
-        self.rag_chains = {}
+template_gen_prompt = (
+            "You are an expert assistant guiding a physician question-answering tasks."
+            "Generate a system prompt template relavant this question that will guide the model to reason the question only based on the context provided."
+            "The promt should guide the model to format the answer in with the relevant headings and subheadings, text highlighting and references." 
+            "The generated template should always start and end with 3 dashes"
+            "{context}"
+)
 
-
-    def run_inference(self, message):
-        try:
-            response = self.query_reasoning(message)
-            return response
-        except Exception as e:
-            print(f"Error processing request: {e}")
-            return f"An error occurred. Please try again later."
-
-    '''
-    Query function to retrieve from the chain... 
-    '''
-    def query_reasoning(self, question):
-
-        # TBD -> get the category from the question
-        
-        category = self.classify_query(question)
-        rag_chain = self.rag_chains[category]
-        print(f"The query belongs to the category: {category}")
-
-        try:
-            results = rag_chain.invoke({"input": question})
-        except Exception as e:
-            print(f"An error occurred: {e}")
-            results = {"context": "No context available", "answer": "Sorry, I couldn't process your request."}
-
-        #print(results)
-        #print(results["context"][0].page_content)
-        #print(results["context"][0].metadata)
-        return results
-
-    '''
-    Classify the given query into a category
-    '''
-    def classify_query(self, query):
-        ''' 
-        # Load a pre-trained model and tokenizer
-        classifier = pipeline("zero-shot-classification", model="facebook/bart-large-mnli")
-        # Use the classifier to predict the category
-        result = classifier(query, candidate_labels=categories)
-        # Get the category with the highest score
-        category = result['labels'][0]
-        '''
-        return "Diagnosis and Differential Diagnosis"
-
-    '''
-    Create a RAG chain 
-    '''
-    def create_chain_rag(self, category):
-        system_prompt = (
+system_prompt = (
             "You are an expert assistant guiding a physician question-answering tasks. Take the most recent guideline data as primary source and use any other guidelines papers that were published within 2years of the primary source for comparison. If there is no relevant guideline data in the last 2years, use older data, but explicitly mention that there are no recent guidelines on the topic.  "
             "Use the following pieces of retrieved context to answer the question in the following format: "
             "\n\n (Recommendation:)"
@@ -129,26 +75,89 @@ class Inference:
             "{context}"
         )
 
-        '''
-                "You are an assistant for question-answering tasks. Take the latest guideline data and use the older one if there is not latest guideline.  "
-                "Use the following pieces of retrieved context to answer the question in the following format:. "
-                "Year of publishing the guideline:"
-                "\n Region of the guidelines: " 
-                "\n Title of the guidelines: "
-                "(Recommendation:)"
-                "    * [Provide a clear and concise recommendation along with context like what guidelines the recommendation is taken from]"
-                "(Factors Favoring:)"
-                "    * [List of factors and links supporting] "
-                "(Important Considerations:)"
-                "    * [List of key factors to consider along with links to the references]"
-                "(Current Guidelines/Recommendations:)"
-                #"    * [Summarize relevant guidelines or best practices along with links to the references]"
-                "    * [Summarize recommendation from different guidelines when available, along with title of guidelines and year of publication and links for references]"        
-                "[Optional: Add specific details or constraints to guide the answer]"
-                "If you don't know the answer, say that you don't know. "
-                "\n\n"
-        '''
 
+class Inference:
+    def __init__(self, storeLocation = "vectorstore"):
+        print(f"Initializing Inference with storeLocation: {storeLocation}")
+        persist_directory = storeLocation
+        vectorstore = Chroma(collection_name="medcopilot", persist_directory=persist_directory, embedding_function=OpenAIEmbeddings())
+        
+        print(f"Vectorstore initialized with documents.")
+        
+        #TBD: Pass hints to the retriever to use the metadata for the search
+        self.retriever = vectorstore.as_retriever()
+        self.llm = ChatOpenAI(model="gpt-4o")
+        self.rag_chains = {}
+
+
+    def run_inference(self, message):
+        try:
+            response = self.query_reasoning(message)
+            return response
+        except Exception as e:
+            print(f"Error processing request: {e}")
+            return f"An error occurred. Please try again later."
+
+    '''
+    Query function to retrieve from the chain... 
+    '''
+    def query_reasoning(self, question):
+
+        # TBD -> get the category from the question
+        
+        #category = self.classify_query(question)
+        #rag_chain = self.rag_chains[category]
+        
+        #rag_chain_template = self.rag_chains["generate_template"]
+        try:
+            prompt_template_rag =  self.create_chain_rag(template_gen_prompt)
+            prompt_template = prompt_template_rag.invoke({"input": question})
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            results = {"context": "No context available", "answer": "Sorry, I couldn't process your request."}
+
+        #print(prompt_template)
+        #print("-----------------")
+        #Extract the template from the "answer" key of the dictionary
+        for key, value in prompt_template.items():
+            if(key == "answer"):
+                start = value.index('---') + 3
+                template = value[start:].strip()
+                #print(f"{template}")
+        #print(results["context"][0].page_content)
+        #print(results["context"][0].metadata)
+        
+        try:
+            prompt_template_main = template + " {context}"
+            main_rag_chain = self.create_chain_rag(prompt_template_main)
+            results = main_rag_chain.invoke({"input": question})
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            results = {"context": "No context available", "answer": "Sorry, I couldn't process your request."}
+        
+        #print(results)
+        #print(results["context"][0].page_content)
+        #print(results["context"][0].metadata)
+        return results
+        
+    '''
+    Classify the given query into a category
+    '''
+    def classify_query(self, query):
+        ''' 
+        # Load a pre-trained model and tokenizer
+        classifier = pipeline("zero-shot-classification", model="facebook/bart-large-mnli")
+        # Use the classifier to predict the category
+        result = classifier(query, candidate_labels=categories)
+        # Get the category with the highest score
+        category = result['labels'][0]
+        '''
+        return "Diagnosis and Differential Diagnosis"
+
+    '''
+    Create a RAG chain 
+    '''
+    def create_chain_rag(self, system_prompt=None):
         prompt = ChatPromptTemplate.from_messages(
             [
                 ("system", system_prompt),
@@ -167,6 +176,6 @@ class Inference:
 
 if __name__ == "__main__":
     inference = Inference()
-    inference.create_rag_chains(categories)
+    #nference.create_rag_chains()
     answer = inference.query_reasoning("What is the best modality to screen for Barrett’s esophagus? What should be the recommendation if a screening endoscopy for Barrett’s esophagus, shows no evidence of Barrett’s esophagus?")
     print(answer)
