@@ -169,10 +169,11 @@ class Inference:
 
         return rag_chain
     
+    '''
     def create_rag_chains(self):
         for category in categories:
             self.rag_chains[category] = self.create_chain_rag(category)
-
+    '''
 
 if __name__ == "__main__":
     inference = Inference()

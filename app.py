@@ -25,7 +25,7 @@ def chat():
    print(f'Request for medcopilot /chat received message={message}')
    try:
       inference = Inference(storeLocation=vecstore_path)
-      inference.create_rag_chains()
+      #inference.create_rag_chains()
       response = inference.run_inference(message)
       print('Response from inference:', response)
       response = serialize(response)
