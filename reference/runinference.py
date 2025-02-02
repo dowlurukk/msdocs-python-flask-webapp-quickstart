@@ -38,9 +38,9 @@ categories = [
 ]
 
 template_gen_prompt = (
-            "You are an expert assistant guiding a physician question-answering tasks."
-            "Generate a system prompt template relavant this question that will guide the model to reason the question only based on the context provided."
-            "The promt should guide the model to format the answer in with the relevant headings and subheadings, text highlighting and references." 
+            "You are an expert at generating prompt templates for Language Models."
+            "Generate a system prompt template relavant to this question that will guide the model to reason the question only based on the context provided."
+            "The prompt should guide the model to format the answer with the relevant headings and subheadings, text highlighting and references." 
             "The generated template should always start and end with 3 dashes"
             "{context}"
 )
@@ -123,7 +123,7 @@ class Inference:
             if(key == "answer"):
                 start = value.index('---') + 3
                 template = value[start:].strip()
-                #print(f"{template}")
+                print(f"{template}")
         #print(results["context"][0].page_content)
         #print(results["context"][0].metadata)
         
