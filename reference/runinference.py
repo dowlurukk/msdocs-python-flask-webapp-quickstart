@@ -19,7 +19,8 @@ from langchain_chroma import Chroma
 from langchain_openai import OpenAIEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import AzureBlobStorageContainerLoader
-
+from langchain.prompts import PromptTemplate
+from langchain.chains import LLMChain
 
 import getpass
 import os
@@ -49,7 +50,7 @@ system_prompt = (
             "You are an expert assistant guiding a physician question-answering tasks. Take the most recent guideline data as primary source and use any other guidelines papers that were published within 2years of the primary source for comparison. If there is no relevant guideline data in the last 2years, use older data, but explicitly mention that there are no recent guidelines on the topic.  "
             "Use the following pieces of retrieved context to answer the question in the following format: "
             "\n\n (Recommendation:)"
-            "    * [Provide a clear and concise recommendation along with context like what data abd guidelines the recommendation is taken from]"
+            "    * [Provide a clear and concise recommendation along with context like what data and guidelines the recommendation is taken from]"
             "\n\n (Detailed explanation:)"
             "\n    * [Provide a detailed explanation of the recommendation along with the rationale for the recommendation with context like what data and guidelines the recommendation is taken from]"
             "\n\n (Supportive Arguments:)"
@@ -58,7 +59,7 @@ system_prompt = (
             "\n\n (Important Considerations:)"
             "\n    * [List of key factors to consider along with links to the references]"
             "\n    * [List any key factors that might make this recommendation unsuitable for a particular patient]"
-            "\n    * [List any key risks, complications or harm that could occur with the recommendedation]" 
+            "\n    * [List any key risks, complications or harm that could occur with the recommendation]" 
             "\n    * [List any alternative management strategies ]"  
             "\n\n (Recommendations from other guidelines:)"
             "\n    * [Summarize recommendation from other guidelines when available, along with title of guidelines and year of publication and links for references]" 
@@ -75,6 +76,35 @@ system_prompt = (
             "{context}"
         )
 
+patient_prompt = (
+            "You are an expert assistant guiding a patient question-answering tasks. Take the most recent guideline data as primary source and use any other guidelines that were published within few years of the primary source for comparison. If there is no relevant guideline data in the last 2years, use older data, but explicitly mention that there are no recent guidelines on the topic.  "
+            "Use the following pieces of retrieved context to answer the question in the following format: "
+            "\n\n (Recommendation:)"
+            "    * [Provide a clear and concise recommendation along with context like what data and guidelines the recommendation is taken from]"
+            "\n\n (Detailed explanation:)"
+            "\n    * [Provide a detailed explanation of the recommendation along with the rationale for the recommendation with context like what data and guidelines the recommendation is taken from]"
+            "\n\n (Supportive Arguments:)"
+            "\n    * [List of factors and links supporting the recommendation] "
+            "\n    * [Detail the Reasoning behind the recommendation, rationale for the recommendation with pathophysiological context from the guidelines as well as the references contained within the guidelines and detail the risk of harm without the recommended management strategy]" 
+            "\n\n (Important Considerations:)"
+            "\n    * [List of key factors to consider along with links to the references]"
+            "\n    * [List any key factors that might make this recommendation unsuitable for a particular patient]"
+            "\n    * [List any key risks, complications or harm that could occur with the recommendation]" 
+            "\n    * [List any alternative management strategies ]"  
+            "\n\n (Recommendations from other guidelines:)"
+            "\n    * [Summarize recommendation from other guidelines when available, along with title of guidelines and year of publication and links for references]" 
+            "\n    * [Summarize and highlight if there is a different recommendation from different regional or older guidelines]"       
+            "[Optional: Add specific details or constraints to guide the answer]"
+            "\n\n (Controversies in management)"
+            "\n   * [List any opposing schools of thought, and any differences in recommendation in other  recent guidelines  within 4 years of the primary guideline. Explain any controversies on the topic ]"
+            "\n (Primary source of data: )"
+            "\n   * [ list the Titles of the guidelines used for this recommendation]"
+            "\n Year of publication: "
+            "\n   * [ show the year of guideline used for recommendation along with society of the guideline]"
+            "If you don't know the answer, say that you don't know. "
+            "\n\n"
+            "{context}"
+        )
 
 class Inference:
     def __init__(self, storeLocation = "vectorstore"):
@@ -138,8 +168,50 @@ class Inference:
         #print(results)
         #print(results["context"][0].page_content)
         #print(results["context"][0].metadata)
+        followup_questions = self.generate_followup_questions(question, results)
+        results["followup_questions"] = followup_questions
+
         return results
         
+    
+    def generate_followup_questions(self, original_question, previous_results):
+    
+        followup_template = """
+        Based on the original question: {original_question}
+        And the previous answer: {previous_answer}
+        With context: {context}
+        
+        Generate 3 relevant followup questions that would help explore this topic further.
+        Return only the numbered questions, no additional text.
+        """
+        
+        try:
+            # Create prompt template
+            followup_prompt = PromptTemplate(
+                input_variables=["original_question", "previous_answer", "context"],
+                template=followup_template
+            )
+            
+            # Create chain
+            followup_chain = LLMChain(llm=self.llm, prompt=followup_prompt)
+            
+            # Get context from previous results
+            context = previous_results.get("context", "No context available")
+            previous_answer = previous_results.get("answer", "No answer available")
+            
+            # Generate followup questions
+            followups = followup_chain.invoke({
+                "original_question": original_question,
+                "previous_answer": previous_answer,
+                "context": context
+            })
+            
+            return followups["text"].strip().split("\n")
+            
+        except Exception as e:
+            print(f"Error generating followup questions: {e}")
+            return ["Could not generate followup questions"]
+
     '''
     Classify the given query into a category
     '''
