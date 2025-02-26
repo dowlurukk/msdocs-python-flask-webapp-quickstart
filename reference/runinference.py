@@ -43,6 +43,7 @@ template_gen_prompt = (
             "Generate a system prompt template relavant to this question that will guide the model to reason the question only based on the context provided."
             "The prompt should guide the model to format the answer with the relevant headings and subheadings, text highlighting and references." 
             "The generated template should always start and end with 3 dashes"
+            "The generated template should also have the following sections Recommendation, Detailed explanation, Supportive Arguments, Important Considerations, Recommendations from other guidelines, Controversies in management, Primary source of data"
             "{context}"
 )
 
