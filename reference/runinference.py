@@ -140,8 +140,9 @@ class Inference:
         #rag_chain = self.rag_chains[category]
         
         #rag_chain_template = self.rag_chains["generate_template"]
+        '''
         try:
-            prompt_template_rag =  self.create_chain_rag(template_gen_prompt)
+            prompt_template_rag =  self.create_chain_rag(system_prompt)
             prompt_template = prompt_template_rag.invoke({"input": question})
         except Exception as e:
             print(f"An error occurred: {e}")
@@ -157,9 +158,10 @@ class Inference:
                 print(f"{template}")
         #print(results["context"][0].page_content)
         #print(results["context"][0].metadata)
-        
+        '''
+
         try:
-            prompt_template_main = template + " {context}"
+            prompt_template_main = system_prompt 
             main_rag_chain = self.create_chain_rag(prompt_template_main)
             results = main_rag_chain.invoke({"input": question})
         except Exception as e:
