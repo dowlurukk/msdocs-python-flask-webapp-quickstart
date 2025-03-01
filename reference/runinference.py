@@ -26,6 +26,7 @@ import getpass
 import os
 
 from transformers import pipeline
+from langchain.callbacks import get_openai_callback
 
 
 # Define the categories
@@ -48,31 +49,32 @@ template_gen_prompt = (
 )
 
 system_prompt = (
-            "You are an expert assistant guiding a physician question-answering tasks. Take the most recent guideline data as primary source and use any other guidelines papers that were published within 2years of the primary source for comparison. If there is no relevant guideline data in the last 2years, use older data, but explicitly mention that there are no recent guidelines on the topic.  "
+            "You are an expert assistant guiding a physician in providing guideline based recommendations for patient care. Take the most recent guideline data as primary source and use any other guidelines papers that were published within 2years of the primary source for comparison. If there is no relevant guideline data in the last 2years, use older data, but explicitly mention that there are no recent guidelines on the topic.  "
             "Use the following pieces of retrieved context to answer the question in the following format: "
             "\n\n (Recommendation:)"
             "    * [Provide a clear and concise recommendation along with context like what data and guidelines the recommendation is taken from]"
-            "\n\n (Detailed explanation:)"
-            "\n    * [Provide a detailed explanation of the recommendation along with the rationale for the recommendation with context like what data and guidelines the recommendation is taken from]"
-            "\n\n (Supportive Arguments:)"
-            "\n    * [List of factors and links supporting the recommendation] "
+            "\n\n (Rationale and Supportive Arguments:)"
+            "\n    * [Provide a detailed explanation of the recommendation along with the rationale for the recommendation with context such as what are the main pathophysiological considerations for the question in context, data behind management strategy and guidelines the recommendation is taken from]"
             "\n    * [Detail the Reasoning behind the recommendation, rationale for the recommendation with pathophysiological context from the guidelines as well as the references contained within the guidelines and detail the risk of harm without the recommended management strategy]" 
+            "\n    * [List of factors and links supporting the recommendation] "
             "\n\n (Important Considerations:)"
             "\n    * [List of key factors to consider along with links to the references]"
             "\n    * [List any key factors that might make this recommendation unsuitable for a particular patient]"
             "\n    * [List any key risks, complications or harm that could occur with the recommendation]" 
             "\n    * [List any alternative management strategies ]"  
-            "\n\n (Recommendations from other guidelines:)"
-            "\n    * [Summarize recommendation from other guidelines when available, along with title of guidelines and year of publication and links for references]" 
+            "\n\n (Relevant guidelines:)"
+            "\n    * [Mention the main guidelines used to formulate the above recommendation. If multiple guidelines were used to synthesis the above recommendations, mention all with title of guidelines and year of publication and links for references]"
+            "\n    * [If there is difference in opinion between different guidelines, Summarize and highlight the differences in guidelines other than the main guideline used for the recommendation]" 
             "\n    * [Summarize and highlight if there is a different recommendation from different regional or older guidelines]"       
             "[Optional: Add specific details or constraints to guide the answer]"
-            "\n\n (Controversies in management)"
+            "\n\n (Areas of uncertainty and Controversies in management)"
             "\n   * [List any opposing schools of thought, and any differences in recommendation in other  recent guidelines  within 4 years of the primary guideline. Explain any controversies on the topic ]"
             "\n (Primary source of data: )"
             "\n   * [ list the Titles of the guidelines used for this recommendation]"
             "\n Year of publication: "
             "\n   * [ show the year of guideline used for recommendation along with society of the guideline]"
-            "If you don't know the answer, say that you don't know. "
+            "\n If there is not enough guideline supported data to make a recommendation, please explain that."
+            "\n If you don't know the answer, say that you don't know. "
             "\n\n"
             "{context}"
         )
@@ -134,6 +136,26 @@ class Inference:
     '''
     def query_reasoning(self, question):
 
+        '''
+        # this is the code for streaming... 
+        def stream_response(callback):
+            for chunk in callback:
+                if chunk.get("choices"):
+                    yield chunk["choices"][0]["delta"].get("content", "")
+
+        try:
+            prompt_template_main = system_prompt 
+            main_rag_chain = self.create_chain_rag(prompt_template_main)
+            with get_openai_callback() as callback:
+                main_rag_chain.invoke({"input": question}, callback=callback)
+                response_stream = stream_response(callback)
+                for chunk in response_stream:
+                    print(chunk, end='', flush=True)
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            return "An error occurred. Please try again later."
+        '''
+
         # TBD -> get the category from the question
         
         #category = self.classify_query(question)
@@ -172,7 +194,9 @@ class Inference:
         #print(results["context"][0].page_content)
         #print(results["context"][0].metadata)
         followup_questions = self.generate_followup_questions(question, results)
+        print(f"FollowupQuestion : {followup_questions}")
         results["followup_questions"] = followup_questions
+        print(f"Results with followup questions: {results}")
 
         return results
         
@@ -184,7 +208,7 @@ class Inference:
         And the previous answer: {previous_answer}
         With context: {context}
         
-        Generate 3 relevant followup questions that would help explore this topic further.
+        Generate 3 most relevant followup questions that would help explore this topic further.
         Return only the numbered questions, no additional text.
         """
         
