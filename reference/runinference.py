@@ -209,7 +209,13 @@ class Inference:
         With context: {context}
         
         Generate 3 most relevant followup questions that would help explore this topic of the question further.
-        Return the three questions in a valid json format.
+        You must return valid JSON for the three related questions, without any additional text:
+        {
+          "question": "first related question",
+          "question": "second related question",
+          "question": "third related question",
+        },
+        Make your JSON output concise and valid. 
         """
         
         try:
