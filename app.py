@@ -27,7 +27,7 @@ def chat():
       inference = Inference(storeLocation=vecstore_path)
       #inference.create_rag_chains()
       response = inference.run_inference(message)
-      print('Response from inference:', response)
+      print('Response from inference at the main api call:', response)
       response = serialize(response)
    except Exception as e:
       response = f"An error occurred. Please try again later. Error: {e}"

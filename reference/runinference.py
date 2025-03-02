@@ -208,8 +208,8 @@ class Inference:
         And the previous answer: {previous_answer}
         With context: {context}
         
-        Generate 3 most relevant followup questions that would help explore this topic further.
-        Return only the numbered questions, no additional text.
+        Generate 3 most relevant followup questions that would help explore this topic of the question further.
+        Return the three questions in a valid json format.
         """
         
         try:
