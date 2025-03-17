@@ -119,6 +119,6 @@ class Inference:
     
 if __name__ == '__main__':
     inference = Inference()
-    response = inference.run_inference("What is the treatment for diabetes?")
+    response = inference.run_inference("What is the treatment for cancer?")
     print(response)
     print("Inference completed.")
