@@ -1,3 +1,5 @@
+// Purpose: To list all the dependencies of the project
+torch
 Flask==2.2.2
 gunicorn
 Werkzeug==2.2.2

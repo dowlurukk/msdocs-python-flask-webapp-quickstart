@@ -1,10 +1,12 @@
 import os
-from reference.runinference import Inference
+from reference.runinference2 import Inference
 from flask import (Flask, redirect, render_template, request,jsonify,
                    send_from_directory, url_for)
 
 app = Flask(__name__)
 vecstore_path =  '/home/filesharemount'
+#vecstore_path =  '/Users/kirandowluru/testwebapp/msdocs-python-flask-webapp-quickstart/vectorstore'
+
 
 @app.route('/')
 def mainPage():
