@@ -1,5 +1,3 @@
-from transformers import pipeline
-
 class PromptCategories:
     
     disease_overview = ( 
@@ -167,36 +165,14 @@ class PromptCategories:
                 "Screening & Surveillance" : screening_surveillance
             }
     
-    def __init__(self):
-        self.categorize = pipeline("zero-shot-classification", model="medicalai/ClinicalBERT")
-
-    def get_prompt(self, query):
-        category = self.get_category(query)
-        return self.prompt_categories[category]
-    
     def get_prompt(self, category):
         return self.prompt_categories[category]
     
     def get_categories(self):
         return list(self.prompt_categories.keys())
     
-    def get_category(self, query):
-        result = self.categorize(query, list(self.prompt_categories.keys()))
-        print(result)
-        return result["labels"][0]  
-    
     def get_followup_template(self):
         return self.followup_template
         
     def get_classification_template(self):
         return self.classification_template
-
-if __name__ == '__main__':
-    prompt_categories = PromptCategories()
-    print(prompt_categories.get_category("What is the treatment for diabetes?"))
-    print(prompt_categories.get_category("What is the cause of diabetes?"))
-    print(prompt_categories.get_category("What are the symptoms of diabetes?"))
-    print(prompt_categories.get_category("How is diabetes diagnosed?"))
-    print(prompt_categories.get_category("How is diabetes monitored?"))
-    print(prompt_categories.get_category("What are the guidelines for diabetes?"))
-    print(prompt_categories.get_category("What are the recent publications on diabetes?"))       
