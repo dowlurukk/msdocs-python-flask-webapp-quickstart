@@ -3,12 +3,16 @@ gunicorn
 Werkzeug==2.2.2
 flask-cors
 pymupdf
-langchain 
-langchain_community
-langchain_openai
-langchain_chroma
+langchain>=0.1.0
+langchain_community>=0.0.10
+langchain_openai>=0.0.5
+langchain_chroma>=0.1.0
+langchain-core>=0.1.0
 pypdf
 cryptography
 transformers
 PyMuPDF
-pysqlite3-binary
+pysqlite3; platform_system == "Linux"
+paperscraper
+chromadb>=0.4.0
+openai>=1.0.0

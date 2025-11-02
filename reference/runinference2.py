@@ -1,9 +1,21 @@
 from datetime import datetime
-#import openai
-import pysqlite3
 import sys
-sys.modules["sqlite3"] = sys.modules.pop("pysqlite3")
-from .promptcategories import PromptCategories
+import os
+from dotenv import load_dotenv
+#import openai
+
+# Load environment variables from .env file
+load_dotenv()
+
+# Only use pysqlite3 on Linux where it's available
+if sys.platform == "linux":
+    try:
+        import pysqlite3
+        sys.modules["sqlite3"] = sys.modules.pop("pysqlite3")
+    except ImportError:
+        pass  # Fall back to built-in sqlite3
+
+from promptcategories import PromptCategories
 from langchain.chains import create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.prompts import ChatPromptTemplate
@@ -16,7 +28,7 @@ from langchain.chains import LLMChain
 from langchain_core.messages import HumanMessage, AIMessage
 
 class Inference:
-    def __init__(self, storeLocation = "vectorstore", max_history_messages=100):
+    def __init__(self, storeLocation = "vectorstore", max_history_messages=50):
         print(f"Initializing Inference with storeLocation: {storeLocation}")
         persist_directory = storeLocation
         vectorstore = Chroma(collection_name="medcopilot", persist_directory=persist_directory, embedding_function=OpenAIEmbeddings())
