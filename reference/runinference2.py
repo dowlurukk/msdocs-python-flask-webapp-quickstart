@@ -16,7 +16,7 @@ from langchain.chains import LLMChain
 from langchain_core.messages import HumanMessage, AIMessage
 
 class Inference:
-    def __init__(self, storeLocation = "vectorstore", max_history_messages=10):
+    def __init__(self, storeLocation = "vectorstore", max_history_messages=100):
         print(f"Initializing Inference with storeLocation: {storeLocation}")
         persist_directory = storeLocation
         vectorstore = Chroma(collection_name="medcopilot", persist_directory=persist_directory, embedding_function=OpenAIEmbeddings())
