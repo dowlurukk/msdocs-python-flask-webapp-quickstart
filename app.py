@@ -32,23 +32,20 @@ def mainPage():
    return f'Hello there, ! Welcome to the Medcopilot, the medical guidelines assistant! '
 
 
-@app.route('/chat', methods=['GET', 'POST', 'OPTIONS'])
+@app.route('/chat', methods=['POST', 'OPTIONS'])
 def chat():
    # Handle CORS preflight quickly; headers are added by Flask-CORS
    if request.method == 'OPTIONS':
       return ('', 204)
 
-   # Extract message across GET query, JSON body, or form-encoded
-   message = None
-   if request.method == 'GET':
-      message = request.args.get('message')
-   else:
-      if request.is_json:
-         body = request.get_json(silent=True) or {}
-         message = body.get('message')
-      if not message:
-         # fallback to querystring or form
-         message = request.args.get('message') or request.form.get('message')
+   # Expect JSON body by default
+   if not request.is_json:
+      return jsonify({"error": "Invalid request. Expected application/json body."}), 400
+
+   body = request.get_json(silent=True) or {}
+   message = body.get('message')
+   if not message:
+      return jsonify({"error": "Missing 'message' in JSON body."}), 400
 
    print(f'Request for medcopilot /chat received message={message}')
 
