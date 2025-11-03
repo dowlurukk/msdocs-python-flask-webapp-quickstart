@@ -24,3 +24,9 @@ pysqlite3-binary; platform_system == "Linux"
 paperscraper
 chromadb>=0.4.24
 openai>=1.0.0
+
+# Pin OpenTelemetry packages to match ChromaDB requirements and override system defaults
+opentelemetry-api>=1.27.0
+opentelemetry-sdk>=1.27.0
+opentelemetry-exporter-otlp-proto-grpc>=1.27.0
+opentelemetry-instrumentation>=0.48b0
