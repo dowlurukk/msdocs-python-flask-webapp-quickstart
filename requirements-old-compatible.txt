@@ -1,0 +1,22 @@
+# Fully compatible old versions from langchain 0.0.284 era
+langchain==0.0.284
+pydantic==1.10.13
+typing_extensions==4.6.3
+
+# Core dependencies for langchain 0.0.284
+openai==0.28.1
+tenacity
+aiohttp
+requests
+
+# Vector store - try simpler version
+chromadb>=0.4.0,<0.5.0
+
+# Flask
+Flask==2.2.2
+python-dotenv==1.0.0
+gunicorn==21.2.0
+
+# System packages
+PyYAML
+numpy
