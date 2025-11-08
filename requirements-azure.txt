@@ -1,0 +1,42 @@
+# Core Flask dependencies
+Flask==2.2.2
+gunicorn==23.0.0
+Werkzeug==2.2.2
+flask-cors==5.0.0
+
+# Critical compatibility packages - install these first
+typing_extensions==4.15.0
+pydantic==2.12.4
+pydantic-core==2.41.5
+pydantic-settings==2.7.1
+
+# LangChain packages with exact working versions
+langchain==0.3.17
+langchain-community==0.3.16
+langchain-openai==0.3.3
+langchain-chroma==0.2.1
+langchain-core==0.3.33
+langchain-text-splitters==0.3.5
+
+# OpenAI and embedding dependencies
+openai>=1.0.0
+tiktoken<1,>=0.7
+
+# Vector store and document processing
+chromadb>=0.4.0
+pypdf==5.2.0
+pymupdf==1.25.2
+PyMuPDF==1.25.2
+
+# Additional ML/NLP packages
+transformers==4.48.2
+cryptography==44.0.0
+
+# System-specific packages
+pysqlite3; platform_system == "Linux"
+
+# Research and analysis packages
+paperscraper==0.2.16
+
+# Environment management
+python-dotenv==1.0.1

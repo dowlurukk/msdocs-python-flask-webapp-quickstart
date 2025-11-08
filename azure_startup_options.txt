@@ -1,0 +1,17 @@
+# Alternative startup commands for Azure App Service
+# Choose ONE of these options in your Azure App Service Configuration
+
+# OPTION 1: Most Aggressive Fix (Recommended)
+python -c "import sys; sys.path.insert(0, '/tmp'); import subprocess; subprocess.run([sys.executable, '-m', 'pip', 'install', '--force-reinstall', '--target', '/tmp', 'typing_extensions==4.15.0', 'pydantic==2.12.4', 'pydantic-core==2.41.5'], check=True)" && pip install -r requirements.txt && gunicorn --bind=0.0.0.0 --timeout 600 app:app
+
+# OPTION 2: Use Pre-deployment Script
+python azure_fix.py
+
+# OPTION 3: Direct pip with target installation
+pip install --force-reinstall --target /home/site/wwwroot typing_extensions==4.15.0 && PYTHONPATH="/home/site/wwwroot:$PYTHONPATH" pip install -r requirements.txt && PYTHONPATH="/home/site/wwwroot:$PYTHONPATH" gunicorn --bind=0.0.0.0 --timeout 600 app:app
+
+# OPTION 4: Use requirements-azure.txt with forced installation
+pip install --force-reinstall typing_extensions==4.15.0 pydantic==2.12.4 pydantic-core==2.41.5 && pip install -r requirements-azure.txt && gunicorn --bind=0.0.0.0 --timeout 600 app:app
+
+# OPTION 5: Install to user directory (if writable)
+pip install --user --force-reinstall typing_extensions==4.15.0 pydantic==2.12.4 pydantic-core==2.41.5 && pip install -r requirements.txt && gunicorn --bind=0.0.0.0 --timeout 600 app:app

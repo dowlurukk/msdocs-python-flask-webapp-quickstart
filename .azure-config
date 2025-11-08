@@ -1,0 +1,27 @@
+# Azure App Service configuration for Python
+# This file should be placed in the root of your repository
+
+# Python version specification
+PYTHON_VERSION=3.12
+
+# Startup command - use the custom startup script
+STARTUP_COMMAND=startup.sh
+
+# Environment variables for Azure
+WEBSITES_PORT=8000
+SCM_DO_BUILD_DURING_DEPLOYMENT=true
+
+# Package installation order is critical for dependency resolution
+# 1. First install typing_extensions
+# 2. Then install pydantic packages
+# 3. Finally install remaining requirements
+
+# Alternative startup commands you can use in Azure App Service:
+# Option 1: Direct gunicorn command
+# gunicorn --bind=0.0.0.0 --timeout 600 app:app
+
+# Option 2: Use requirements-azure.txt with specific versions
+# pip install -r requirements-azure.txt && gunicorn --bind=0.0.0.0 --timeout 600 app:app
+
+# Option 3: Force reinstall critical packages first
+# pip install --force-reinstall typing_extensions==4.15.0 pydantic==2.12.4 pydantic-core==2.41.5 && pip install -r requirements.txt && gunicorn --bind=0.0.0.0 --timeout 600 app:app

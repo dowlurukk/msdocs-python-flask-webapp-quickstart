@@ -1,0 +1,20 @@
+# RECOMMENDED AZURE APP SERVICE STARTUP COMMANDS
+# Copy ONE of these commands to your Azure App Service "Startup Command" setting
+
+# OPTION 1: Comprehensive fix with local package installation (RECOMMENDED)
+mkdir -p /home/site/wwwroot/deps && pip install --force-reinstall --target /home/site/wwwroot/deps --no-deps typing_extensions==4.15.0 pydantic-core==2.41.5 pydantic==2.12.4 && pip install -r requirements.txt && PYTHONPATH="/home/site/wwwroot/deps:$PYTHONPATH" gunicorn --bind=0.0.0.0 --timeout 600 app:app
+
+# OPTION 2: Use the custom startup script  
+./startup.sh
+
+# OPTION 3: Pre-install critical packages then install requirements
+pip install --force-reinstall typing_extensions==4.15.0 pydantic==2.12.4 pydantic-core==2.41.5 && pip install --force-reinstall -r requirements.txt && gunicorn --bind=0.0.0.0 --timeout 600 app:app
+
+# OPTION 4: Install with no-deps flag to prevent conflicts
+pip install --no-deps --force-reinstall typing_extensions==4.15.0 pydantic-core==2.41.5 pydantic==2.12.4 && pip install -r requirements.txt && gunicorn --bind=0.0.0.0 --timeout 600 app:app
+
+# OPTION 5: Use environment variable to override import path
+pip install --force-reinstall typing_extensions==4.15.0 pydantic==2.12.4 pydantic-core==2.41.5 && pip install -r requirements.txt && PYTHONDONTWRITEBYTECODE=1 gunicorn --bind=0.0.0.0 --timeout 600 app:app
+
+# If none of the above work, try this nuclear option:
+# python -m pip uninstall -y typing_extensions pydantic pydantic-core && pip install typing_extensions==4.15.0 pydantic==2.12.4 pydantic-core==2.41.5 && pip install -r requirements.txt && gunicorn --bind=0.0.0.0 --timeout 600 app:app
