@@ -3,6 +3,8 @@
 # Azure startup script for the Flask app with compatible dependencies
 echo "Starting Azure deployment setup..."
 
+python -m pip install --upgrade pip
+
 # Install the compatible package versions
 pip install --no-cache-dir -r requirements.txt
 

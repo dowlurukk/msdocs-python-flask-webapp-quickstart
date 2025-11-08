@@ -5,7 +5,7 @@ python-dotenv==1.0.1
 
 # Core AI packages - compatible versions that work together
 langchain==0.0.284
-pydantic==1.10.13
+pydantic==1.10.18
 openai==0.28.1
 chromadb
 
