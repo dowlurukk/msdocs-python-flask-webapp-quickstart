@@ -15,17 +15,19 @@ if sys.platform == "linux":
     except ImportError:
         pass  # Fall back to built-in sqlite3
 
-from promptcategories import PromptCategories
-from langchain.chains import create_retrieval_chain
-from langchain.chains.combine_documents import create_stuff_documents_chain
-from langchain_core.prompts import ChatPromptTemplate
+from .promptcategories import PromptCategories
+from langchain_core.prompts import ChatPromptTemplate, PromptTemplate
 
 from langchain_openai import ChatOpenAI
 from langchain_chroma import Chroma
 from langchain_openai import OpenAIEmbeddings
-from langchain.prompts import PromptTemplate
-from langchain.chains import LLMChain
 from langchain_core.messages import HumanMessage, AIMessage
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.runnables import (
+    RunnableParallel,
+    RunnablePassthrough,
+    RunnableLambda,
+)
 
 class Inference:
     def __init__(self, storeLocation = "vectorstore", max_history_messages=50):
@@ -44,6 +46,14 @@ class Inference:
         # Initialize conversation history
         self.conversation_history = []
         self.max_history_messages = max_history_messages
+
+    def _format_docs(self, docs):
+        """Join retrieved documents' page_content for prompt context."""
+        try:
+            return "\n\n".join(getattr(d, "page_content", str(d)) for d in docs)
+        except Exception:
+            # Fallback to string if docs isn't iterable
+            return str(docs)
 
     def run_inference(self, query, maintain_history=True):
         print(f"Running inference for query: {query}")
@@ -77,10 +87,31 @@ class Inference:
             # Add current query
             messages.append(("human", "{input}"))
             
+            # Ensure the system message includes a {context} slot for retrieved docs
+            # If not already included, extend it here
+            if "{context}" not in messages[0][1]:
+                messages[0] = ("system", f"{messages[0][1]}\n\nContext:\n{{context}}")
+
             prompt = ChatPromptTemplate.from_messages(messages)
-            question_answer_chain = create_stuff_documents_chain(self.llm, prompt)
-            rag_chain = create_retrieval_chain(self.retriever, question_answer_chain)
-            results = rag_chain.invoke({"input": query})
+
+            # Build LCEL RAG pipeline
+            parser = StrOutputParser()
+            answer_chain = (
+                {
+                    "context": self.retriever | RunnableLambda(self._format_docs),
+                    "input": RunnablePassthrough(),
+                }
+                | prompt
+                | self.llm
+                | parser
+            )
+
+            # Return both the model answer and raw documents for existing serializer
+            rag_chain = RunnableParallel(
+                answer=answer_chain,
+                context=self.retriever,
+            )
+            results = rag_chain.invoke(query)
             
             # Update conversation history
             if maintain_history:
@@ -130,21 +161,21 @@ class Inference:
                 template=followup_template
             )
             
-            # Create chain
-            followup_chain = LLMChain(llm=self.llm, prompt=followup_prompt)
+            # Create LCEL chain
+            followup_chain = followup_prompt | self.llm | StrOutputParser()
             
             # Get context from previous results
             context = previous_results.get("context", "No context available")
             previous_answer = previous_results.get("answer", "No answer available")
             
             # Generate followup questions
-            followups = followup_chain.invoke({
+            text = followup_chain.invoke({
                 "original_question": original_question,
                 "previous_answer": previous_answer,
                 "context": context
             })
             
-            return followups["text"].strip().split("\n")
+            return (text or "").strip().split("\n")
             
         except Exception as e:
             print(f"Error generating followup questions: {e}")
@@ -152,24 +183,23 @@ class Inference:
  
     def classify_prompt_category(self, query):
         categories = self.promt_categories.get_categories()
-        classify_template = self.promt_categories.get_classification_template()
+        classification_template_text = self.promt_categories.get_classification_template()
 
         try:
             # Create prompt template
-            classify_template = PromptTemplate(
-                input_variables=["context"],
-                template=classify_template
+            classify_prompt = PromptTemplate(
+                input_variables=["query", "context"],
+                template=classification_template_text,
             )
             
-            # Create chain
-            rag_chain = LLMChain(llm=self.llm, prompt=classify_template)
+            # Create LCEL chain
+            classify_chain = classify_prompt | self.llm | StrOutputParser()
             
-            # Generate followup questions
-            category = rag_chain.invoke({
+            text = classify_chain.invoke({
                 "query": query,
-                "context": "No context available"
+                "context": "No context available",
             })
-            return category["text"].strip().split("\n")
+            return (text or "").strip().split("\n")
             
         except Exception as e:   
             print(f"Error classifying the query: {e}")

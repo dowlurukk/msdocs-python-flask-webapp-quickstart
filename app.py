@@ -1,9 +1,20 @@
 import os
 from reference.runinference2 import Inference
-from flask import (Flask, redirect, render_template, request,jsonify,
+from flask import (Flask, redirect, render_template, request, jsonify,
                    send_from_directory, url_for)
+from flask_cors import CORS
 
 app = Flask(__name__)
+# Configure CORS to allow the Static Web App origin (comma separate multiple origins in ALLOWED_ORIGINS)
+allowed_origins = os.getenv(
+   "ALLOWED_ORIGINS",
+   "https://black-cliff-051a7af1e.4.azurestaticapps.net"
+).split(",")
+CORS(
+   app,
+   resources={r"/chat": {"origins": allowed_origins}},
+   supports_credentials=True
+)
 vecstore_path =  '/home/filesharemount'
 #vecstore_path =  '/Users/kirandowluru/testwebapp/msdocs-python-flask-webapp-quickstart/vectorstore'
 
@@ -21,20 +32,32 @@ def mainPage():
    return f'Hello there, ! Welcome to the Medcopilot, the medical guidelines assistant! '
 
 
-@app.route('/chat', methods=['POST'])
+@app.route('/chat', methods=['POST', 'OPTIONS'])
 def chat():
-   message = request.args.get('message')
+   # Handle CORS preflight quickly; headers are added by Flask-CORS
+   if request.method == 'OPTIONS':
+      return ('', 204)
+
+   # Expect JSON body by default
+   if not request.is_json:
+      return jsonify({"error": "Invalid request. Expected application/json body."}), 400
+
+   body = request.get_json(silent=True) or {}
+   message = body.get('message')
+   if not message:
+      return jsonify({"error": "Missing 'message' in JSON body."}), 400
+
    print(f'Request for medcopilot /chat received message={message}')
+
    try:
       inference = Inference(storeLocation=vecstore_path)
-      #inference.create_rag_chains()
       response = inference.run_inference(message)
       print('Response from inference at the main api call:', response)
       response = serialize(response)
+      return jsonify(response)
    except Exception as e:
-      response = f"An error occurred. Please try again later. Error: {e}"
-
-   return jsonify(response)
+      error = {"error": f"An error occurred. Please try again later.", "details": str(e)}
+      return jsonify(error), 500
 
    
 def serialize(lang_chain_result): 
