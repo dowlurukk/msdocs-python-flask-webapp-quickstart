@@ -1,5 +1,6 @@
 # Compatible versions that work together - tested and verified
 Flask==2.2.2
+Werkzeug==2.2.2
 gunicorn==21.2.0
 python-dotenv==1.0.1
 
