@@ -1,0 +1,41 @@
+# Alternative requirements.txt without Sentinel dependencies
+Flask==2.2.2
+gunicorn
+Werkzeug==2.2.2
+flask-cors
+pymupdf
+PyMuPDF
+
+# Use older, compatible versions
+typing_extensions>=3.10.0,<4.0.0
+pydantic>=1.10.0,<2.0.0
+
+# Alternative to LangChain (if needed)
+# openai>=0.28.0,<1.0.0  # Older OpenAI without Pydantic v2
+openai>=1.0.0  # Keep current if working
+
+# Document processing
+pypdf
+cryptography
+
+# Environment management  
+python-dotenv>=1.0.0
+
+# Vector store alternatives that don't require new Pydantic
+# chromadb<0.4.0  # Use older version
+# OR use a different vector store:
+# faiss-cpu  # Facebook's vector search
+# weaviate-client  # Weaviate vector database
+
+# For now, try older chromadb
+chromadb>=0.3.0,<0.4.0
+
+# Research packages (if still needed)
+# paperscraper  # Remove if causing issues
+# transformers  # Keep if needed, but may cause issues
+
+# Keep if needed for ML
+# transformers>=4.30.0,<4.40.0
+
+# Linux-specific
+pysqlite3-binary; platform_system == "Linux"

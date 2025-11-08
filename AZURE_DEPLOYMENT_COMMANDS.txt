@@ -1,8 +1,8 @@
 # RECOMMENDED AZURE APP SERVICE STARTUP COMMANDS
 # Copy ONE of these commands to your Azure App Service "Startup Command" setting
 
-# OPTION 1: Comprehensive fix with local package installation (RECOMMENDED)
-mkdir -p /home/site/wwwroot/deps && pip install --force-reinstall --target /home/site/wwwroot/deps --no-deps typing_extensions==4.15.0 pydantic-core==2.41.5 pydantic==2.12.4 && pip install -r requirements.txt && PYTHONPATH="/home/site/wwwroot/deps:$PYTHONPATH" gunicorn --bind=0.0.0.0 --timeout 600 app:app
+# OPTION 1: Simple installation with Pydantic v1 (NO SENTINEL ISSUES)
+pip install -r requirements.txt && gunicorn --bind=0.0.0.0 --timeout 600 app:app
 
 # OPTION 2: Use the custom startup script  
 ./startup.sh

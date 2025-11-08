@@ -7,42 +7,7 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 
-# Azure App Service compatibility fix for typing_extensions
-def fix_azure_typing_extensions():
-    """Fix typing_extensions import conflicts in Azure App Service"""
-    try:
-        # Check if we're in Azure environment
-        if "/tmp/" in os.environ.get('PYTHONPATH', '') or any('/tmp/' in p for p in sys.path):
-            # Try to fix the module path issue
-            target_dir = "/home/site/wwwroot/deps"
-            os.makedirs(target_dir, exist_ok=True)
-            
-            import subprocess
-            # Install typing_extensions to a local directory
-            subprocess.check_call([
-                sys.executable, "-m", "pip", "install", 
-                "--force-reinstall", "--target", target_dir,
-                "typing_extensions==4.15.0"
-            ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            
-            # Insert at the beginning of sys.path
-            if target_dir not in sys.path:
-                sys.path.insert(0, target_dir)
-                
-            # Clear any cached imports
-            if 'typing_extensions' in sys.modules:
-                del sys.modules['typing_extensions']
-            if 'pydantic_core' in sys.modules:
-                del sys.modules['pydantic_core']
-            if 'pydantic' in sys.modules:
-                del sys.modules['pydantic']
-                
-    except Exception as e:
-        print(f"Warning: Could not fix typing_extensions: {e}")
-        pass
-
-# Apply the fix for Azure App Service
-fix_azure_typing_extensions()
+# No longer need typing_extensions compatibility fix with Pydantic v1
 
 # Only use pysqlite3 on Linux where it's available
 if sys.platform == "linux":
