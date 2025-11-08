@@ -1,16 +1,29 @@
 # Compatible versions that work together - tested and verified
 Flask==2.2.2
-gunicorn==21.2.0
+gunicorn
 python-dotenv==1.0.1
+Werkzeug==2.2.2
+flask-cors
+pymupdf
 
 # Core AI packages - compatible versions
-langchain==0.0.284
+langchain
 pydantic==1.10.13
 openai==0.28.1
+langchain_community
+langchain_openai
+langchain_chroma
 
 # Vectorstore - note: may need compatibility fix
-chromadb
+# chromadb
+pypdf
+cryptography
+transformers
+PyMuPDF
+
 
 # System compatibility
 typing_extensions==4.15.0
-pysqlite3-binary; platform_system == "Linux"
+pysqlite3-binary
+
+#; platform_system == "Linux"
