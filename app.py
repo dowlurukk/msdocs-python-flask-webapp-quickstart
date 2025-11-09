@@ -5,6 +5,7 @@ from flask import (Flask, redirect, render_template, request, jsonify,
 from flask_cors import CORS
 
 app = Flask(__name__)
+
 # Configure CORS to allow the Static Web App origin (comma separate multiple origins in ALLOWED_ORIGINS)
 allowed_origins = os.getenv(
    "ALLOWED_ORIGINS",
@@ -15,8 +16,9 @@ CORS(
    resources={r"/chat": {"origins": allowed_origins}},
    supports_credentials=True
 )
-vecstore_path =  '/home/filesharemount'
-#vecstore_path =  '/Users/kirandowluru/testwebapp/msdocs-python-flask-webapp-quickstart/vectorstore'
+
+vecstore_path = '/home/filesharemount'
+# vecstore_path = '/Users/kirandowluru/testwebapp/msdocs-python-flask-webapp-quickstart/vectorstore'
 
 
 @app.route('/')
@@ -29,7 +31,7 @@ def mainPage():
            print(file)
            filenames.append(file)
 
-   return f'Hello there, ! Welcome to the Medcopilot, the medical guidelines assistant! '
+   return f'Hello there! Welcome to the Medcopilot, the medical guidelines assistant!'
 
 
 @app.route('/chat', methods=['POST', 'OPTIONS'])
@@ -59,7 +61,7 @@ def chat():
       error = {"error": f"An error occurred. Please try again later.", "details": str(e)}
       return jsonify(error), 500
 
-   
+
 def serialize(lang_chain_result): 
    context_list = []
 
@@ -69,11 +71,13 @@ def serialize(lang_chain_result):
       context_dict['page_content'] = item.page_content
       context_list.append(context_dict)
 
-   
-   return {"input": lang_chain_result['input'],
-            "answer": lang_chain_result['answer'],
-            "context": context_list}
+   return {
+      "input": lang_chain_result['input'],
+      "answer": lang_chain_result['answer'],
+      "context": context_list
+   }
+
 
 if __name__ == '__main__':
-  port = int(os.environ.get('PORT', 8080))
+   port = int(os.environ.get('PORT', 8080))
    app.run(host='0.0.0.0', port=port)
