@@ -75,4 +75,5 @@ def serialize(lang_chain_result):
             "context": context_list}
 
 if __name__ == '__main__':
-   app.run()
+  port = int(os.environ.get('PORT', 8080))
+   app.run(host='0.0.0.0', port=port)
