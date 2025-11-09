@@ -1,10 +1,11 @@
-# Flask and core web dependencies (compatible versions)
-Flask==2.2.2
-Werkzeug==2.2.2
+# Core Flask app
+Flask==2.2.5
+Werkzeug==2.2.3
 gunicorn==21.2.0
+flask-cors==3.0.10
 python-dotenv==1.0.1
 
-# Core AI packages - compatible versions that work together
+# LangChain + AI
 langchain==0.0.284
 pydantic==1.10.13
 openai==0.28.1
