@@ -2,14 +2,31 @@
 Flask==2.2.2
 Werkzeug==2.2.2
 gunicorn==21.2.0
-python-dotenv==1.0.1
+flask-cors>=1.0.0
 
-# Core AI packages - compatible versions that work together
-langchain==0.0.284
-pydantic==1.10.18
-openai==0.28.1
-chromadb
+# Environment variable management
+python-dotenv>=1.0.0
+
+# Core AI packages - LangChain 1.0 compatible versions
+langchain>=0.3.0
+langchain-openai>=0.2.0
+langchain-chroma>=0.1.4
+langchain-core>=0.3.0
+
+# OpenTelemetry (fix ChromaDB import issues on App Service)
+opentelemetry-api>=1.27.0
+opentelemetry-sdk>=1.27.0
+opentelemetry-exporter-otlp-proto-grpc>=1.27.0
+opentelemetry-instrumentation>=0.48b0
+
+pydantic>=2.0,<3.0
+
+# Vector database - requires newer version for LangChain 1.0
+chromadb>=0.5.0
+
+# Latest stable OpenAI package
+openai>=1.0.0
 
 # System compatibility
-typing_extensions==4.15.0
+# typing_extensions==4.15.0
 pysqlite3-binary; platform_system == "Linux"
