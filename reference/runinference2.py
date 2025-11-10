@@ -1,6 +1,6 @@
-from datetime import datetime
+#from datetime import datetime
 import sys
-import os
+#import os
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -16,20 +16,27 @@ if sys.platform == "linux":
 
 # LangChain and project imports
 from reference.promptcategories import PromptCategories
-from langchain.prompts import ChatPromptTemplate, PromptTemplate
-from langchain.vectorstores import Chroma
-from langchain.embeddings.openai import OpenAIEmbeddings
-from langchain.chat_models import ChatOpenAI
-from langchain.schema import HumanMessage, AIMessage, Document
-from langchain.chains import LLMChain
+
+# LangChain 1.0 imports - use split packages and LCEL
+from langchain_core.prompts import ChatPromptTemplate, PromptTemplate
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from langchain_chroma import Chroma
+from langchain_core.messages import HumanMessage, AIMessage
+from langchain_core.documents import Document
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.runnables import RunnablePassthrough, RunnableLambda
 
 
 # --- Mock retriever for fallback ---
 class MockRetriever:
-    """Used when vectorstore initialization fails."""
-    def get_relevant_documents(self, query):
-        print("⚠️ Using mock retriever (no real vectorstore found).")
+    """Mock retriever for testing when vectorstore is not available"""
+    def invoke(self, query):
+        """LangChain 1.0 uses invoke instead of get_relevant_documents"""
         return [Document(page_content="This is a mock document for testing purposes.", metadata={})]
+    
+    def get_relevant_documents(self, query):
+        """Backwards compatibility"""
+        return self.invoke(query)
 
 
 # --- Inference Class ---
@@ -123,15 +130,23 @@ class Inference:
 
             prompt = ChatPromptTemplate.from_messages(messages)
 
-            # Retrieve docs from vectorstore
-            docs = self.retriever.get_relevant_documents(query)
-            context = self._format_docs(docs)
-
-            # Build chain
-            chain = LLMChain(llm=self.llm, prompt=prompt)
-            answer = chain.run(context=context, input=query)
-
-            # ✅ FIX: include 'input' in response
+            # Build LCEL RAG pipeline (LangChain 1.0 style)
+            rag_chain = (
+                {
+                    "context": self.retriever | RunnableLambda(self._format_docs),
+                    "input": RunnablePassthrough()
+                }
+                | prompt
+                | self.llm
+                | StrOutputParser()
+            )
+            
+            # Invoke the chain with the query
+            answer = rag_chain.invoke(query)
+            
+            # Get context documents separately for the response
+            docs = self.retriever.invoke(query)
+            
             results = {
                 "input": query,
                 "answer": answer,
@@ -180,8 +195,38 @@ class Inference:
                 for msg in self.conversation_history
             ]
         }
-
-    # --- Classification ---
+    
+    
+    def generate_followup_questions(self, original_question, previous_results):
+        followup_template = self.promt_categories.get_followup_template()
+        
+        try:
+            # Create prompt template
+            followup_prompt = PromptTemplate(
+                input_variables=["original_question", "previous_answer", "context"],
+                template=followup_template
+            )
+            
+            # Build LCEL chain for followup questions (LangChain 1.0 style)
+            followup_chain = followup_prompt | self.llm | StrOutputParser()
+            
+            # Get context from previous results
+            context = previous_results.get("context", "No context available")
+            previous_answer = previous_results.get("answer", "No answer available")
+            
+            # Invoke the chain
+            text = followup_chain.invoke({
+                "original_question": original_question,
+                "previous_answer": previous_answer,
+                "context": context
+            })
+            
+            return (text or "").strip().split("\n")
+            
+        except Exception as e:
+            print(f"Error generating followup questions: {e}")
+            return ["Could not generate followup questions"]
+ 
     def classify_prompt_category(self, query):
         categories = self.promt_categories.get_categories()
         classification_template_text = self.promt_categories.get_classification_template()
@@ -191,8 +236,14 @@ class Inference:
                 input_variables=["query", "context"],
                 template=classification_template_text,
             )
-            classify_chain = LLMChain(llm=self.llm, prompt=classify_prompt)
-            text = classify_chain.run(query=query, context="No context available")
+            
+            # Build LCEL chain for classification (LangChain 1.0 style)
+            classify_chain = classify_prompt | self.llm | StrOutputParser()
+            
+            text = classify_chain.invoke({
+                "query": query,
+                "context": "No context available"
+            })
             return (text or "").strip().split("\n")
         except Exception as e:
             print(f"⚠️ Error classifying the query: {e}")
