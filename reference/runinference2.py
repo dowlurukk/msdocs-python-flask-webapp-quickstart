@@ -28,7 +28,7 @@ from langchain.chains import LLMChain
 class MockRetriever:
     """Used when vectorstore initialization fails."""
     def get_relevant_documents(self, query):
-        print("Using mock retriever (no real vectorstore found).")
+        print("⚠️ Using mock retriever (no real vectorstore found).")
         return [Document(page_content="This is a mock document for testing purposes.", metadata={})]
 
 
@@ -62,10 +62,10 @@ class Inference:
                 embedding_function=OpenAIEmbeddings()
             )
             self.retriever = vectorstore.as_retriever()
-            print("Chroma vectorstore initialized successfully.")
+            print("✅ Chroma vectorstore initialized successfully.")
         except Exception as e:
-            print(f"Warning: Could not initialize vectorstore: {e}")
-            print("Using MockRetriever instead.")
+            print(f"⚠️ Warning: Could not initialize vectorstore: {e}")
+            print("Fallback: Using MockRetriever.")
             self.retriever = MockRetriever()
 
         # ✅ Initialize LLM (ChatOpenAI)
@@ -76,9 +76,9 @@ class Inference:
 
             print("Initializing ChatOpenAI model...")
             self.llm = ChatOpenAI(model="gpt-4o", temperature=0.3)
-            print("ChatOpenAI initialized successfully.")
+            print("✅ ChatOpenAI initialized successfully.")
         except Exception as e:
-            print(f"Warning: Could not initialize ChatOpenAI: {e}")
+            print(f"⚠️ Warning: Could not initialize ChatOpenAI: {e}")
             self.llm = None
 
     # --- Main inference runner ---
@@ -89,8 +89,12 @@ class Inference:
         try:
             results = self.query_reasoning(query, maintain_history)
         except Exception as e:
-            print(f"Error during inference: {e}")
-            results = {"context": "No context available", "answer": "An internal error occurred."}
+            print(f"❌ Error during inference: {e}")
+            results = {
+                "input": query,
+                "context": [],
+                "answer": "An internal error occurred while generating a response."
+            }
 
         return results
 
@@ -99,7 +103,7 @@ class Inference:
         try:
             prompt_category = self.classify_prompt_category(query)[0]
             system_prompt = self.promt_categories.get_prompt(prompt_category)
-            print(f"System prompt category: {prompt_category}")
+            print(f"🧠 System prompt category: {prompt_category}")
 
             messages = [("system", system_prompt)]
 
@@ -127,14 +131,23 @@ class Inference:
             chain = LLMChain(llm=self.llm, prompt=prompt)
             answer = chain.run(context=context, input=query)
 
-            results = {"answer": answer, "context": docs}
+            # ✅ FIX: include 'input' in response
+            results = {
+                "input": query,
+                "answer": answer,
+                "context": docs
+            }
 
             if maintain_history:
                 self._update_conversation_history(query, answer)
 
         except Exception as e:
-            print(f"An error occurred in query_reasoning: {e}")
-            results = {"answer": "Sorry, I couldn't process your request.", "context": []}
+            print(f"❌ An error occurred in query_reasoning: {e}")
+            results = {
+                "input": query,
+                "answer": "Sorry, I couldn't process your request.",
+                "context": []
+            }
 
         return results
 
@@ -153,7 +166,7 @@ class Inference:
 
     def clear_history(self):
         self.conversation_history = []
-        print("Conversation history cleared.")
+        print("🧹 Conversation history cleared.")
 
     def get_history_summary(self):
         return {
@@ -182,7 +195,7 @@ class Inference:
             text = classify_chain.run(query=query, context="No context available")
             return (text or "").strip().split("\n")
         except Exception as e:
-            print(f"Error classifying the query: {e}")
+            print(f"⚠️ Error classifying the query: {e}")
             return categories[0]
 
 
@@ -191,4 +204,4 @@ if __name__ == '__main__':
     inference = Inference()
     result = inference.run_inference("What is the treatment for hypertension?")
     print("Response:", result)
-    print("Inference completed successfully.")
+    print("✅ Inference completed successfully.")
