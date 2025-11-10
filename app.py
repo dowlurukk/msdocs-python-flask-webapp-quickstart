@@ -1,78 +1,118 @@
 import os
-from reference.runinference2 import Inference
-from flask import (Flask, redirect, render_template, request, jsonify,
-                   send_from_directory, url_for)
+import traceback
+from flask import Flask, request, jsonify
 from flask_cors import CORS
+from reference.runinference2 import Inference
 
 app = Flask(__name__)
-# Configure CORS to allow the Static Web App origin (comma separate multiple origins in ALLOWED_ORIGINS)
+
+# Configure CORS to allow frontend access (adjust this if needed)
 allowed_origins = os.getenv(
-   "ALLOWED_ORIGINS",
-   "https://black-cliff-051a7af1e.4.azurestaticapps.net"
+    "ALLOWED_ORIGINS",
+    "https://black-cliff-051a7af1e.4.azurestaticapps.net"
 ).split(",")
 CORS(
-   app,
-   resources={r"/chat": {"origins": allowed_origins}},
-   supports_credentials=True
+    app,
+    resources={r"/chat": {"origins": allowed_origins}},
+    supports_credentials=True
 )
-vecstore_path =  '/home/filesharemount'
-#vecstore_path =  '/Users/kirandowluru/testwebapp/msdocs-python-flask-webapp-quickstart/vectorstore'
+
+# Path to vector store
+vecstore_path = '/home/filesharemount'
 
 
 @app.route('/')
-def mainPage():
-   name = request.args.get('name')
-   city = request.args.get('city')
-   filenames = []
-   for root, dirs, files in os.walk(vecstore_path):
-       for file in files:
-           print(file)
-           filenames.append(file)
-
-   return f'Hello there, ! Welcome to the Medcopilot, the medical guidelines assistant! '
+def main_page():
+    """Basic welcome route"""
+    return 'Hello there! Welcome to MedCopilot — your medical guidelines assistant!'
 
 
 @app.route('/chat', methods=['POST', 'OPTIONS'])
 def chat():
-   # Handle CORS preflight quickly; headers are added by Flask-CORS
-   if request.method == 'OPTIONS':
-      return ('', 204)
+    """Main API endpoint to handle chat messages"""
+    if request.method == 'OPTIONS':
+        return ('', 204)
 
-   # Expect JSON body by default
-   if not request.is_json:
-      return jsonify({"error": "Invalid request. Expected application/json body."}), 400
+    if not request.is_json:
+        return jsonify({"error": "Invalid request. Expected JSON body."}), 400
 
-   body = request.get_json(silent=True) or {}
-   message = body.get('message')
-   if not message:
-      return jsonify({"error": "Missing 'message' in JSON body."}), 400
+    body = request.get_json(silent=True) or {}
+    message = body.get('message')
 
-   print(f'Request for medcopilot /chat received message={message}')
+    if not message:
+        return jsonify({"error": "Missing 'message' in JSON body."}), 400
 
-   try:
-      inference = Inference(storeLocation=vecstore_path)
-      response = inference.run_inference(message)
-      print('Response from inference at the main api call:', response)
-      response = serialize(response)
-      return jsonify(response)
-   except Exception as e:
-      error = {"error": f"An error occurred. Please try again later.", "details": str(e)}
-      return jsonify(error), 500
+    print(f"📩 Received message: {message}")
 
-   
-def serialize(lang_chain_result): 
-   context_list = []
+    try:
+        inference = Inference(storeLocation=vecstore_path)
+        response = inference.run_inference(message)
+        print("✅ DEBUG: Raw response from Inference:", response)
 
-   for item in lang_chain_result['context']:
-      context_dict = {}
-      context_dict['metadata'] = item.metadata 
-      context_dict['page_content'] = item.page_content
-      context_list.append(context_dict)
+        serialized = serialize(response)
+        print("✅ DEBUG: Serialized response:", serialized)
 
-   
-   return {"input": lang_chain_result['input'],
-            "answer": lang_chain_result['answer'],
-            "context": context_list}
+        return jsonify(serialized)
+
+    except Exception as e:
+        print("❌ ERROR in /chat handler:")
+        print(traceback.format_exc())
+
+        error = {
+            "error": "An error occurred while processing your request.",
+            "details": str(e)
+        }
+        return jsonify(error), 500
+
+
+def serialize(result):
+    """
+    Safely convert inference output into a JSON serializable dict.
+    Handles cases where output might not contain expected fields.
+    """
+    try:
+        # If the result is already a dict with the expected keys
+        if isinstance(result, dict):
+            input_text = result.get('input', "")
+            answer = result.get('answer', str(result))
+            context_items = result.get('context', [])
+
+            context_list = []
+            for item in context_items:
+                # Handle structured context items gracefully
+                context_dict = {
+                    "metadata": getattr(item, "metadata", {}),
+                    "page_content": getattr(item, "page_content", str(item))
+                }
+                context_list.append(context_dict)
+
+            return {
+                "input": input_text,
+                "answer": answer,
+                "context": context_list
+            }
+
+        # If result is just a string (LLM answer)
+        elif isinstance(result, str):
+            return {"input": "", "answer": result, "context": []}
+
+        # Unknown type
+        else:
+            return {
+                "input": "",
+                "answer": str(result),
+                "context": []
+            }
+
+    except Exception as e:
+        print("⚠️ Error during serialization:", e)
+        return {
+            "input": "",
+            "answer": "An internal error occurred during serialization.",
+            "context": []
+        }
+
 
 if __name__ == '__main__':
-   app.run()
+    port = int(os.environ.get('PORT', 8080))
+    app.run(host='0.0.0.0', port=port)

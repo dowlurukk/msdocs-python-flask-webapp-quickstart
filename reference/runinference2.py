@@ -2,21 +2,19 @@
 import sys
 #import os
 from dotenv import load_dotenv
-#import openai
 
 # Load environment variables from .env file
 load_dotenv()
 
-# No longer need typing_extensions compatibility fix with Pydantic v1
-
-# Only use pysqlite3 on Linux where it's available
+# Ensure SQLite compatibility (for Chroma on Linux)
 if sys.platform == "linux":
     try:
         import pysqlite3
         sys.modules["sqlite3"] = sys.modules.pop("pysqlite3")
     except ImportError:
-        pass  # Fall back to built-in sqlite3
+        pass  # fallback to built-in sqlite3
 
+# LangChain and project imports
 from reference.promptcategories import PromptCategories
 
 # LangChain 1.0 imports - use split packages and LCEL
@@ -28,6 +26,8 @@ from langchain_core.documents import Document
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough, RunnableLambda
 
+
+# --- Mock retriever for fallback ---
 class MockRetriever:
     """Mock retriever for testing when vectorstore is not available"""
     def invoke(self, query):
@@ -38,73 +38,93 @@ class MockRetriever:
         """Backwards compatibility"""
         return self.invoke(query)
 
+
+# --- Inference Class ---
 class Inference:
-    def __init__(self, storeLocation = "vectorstore", max_history_messages=50):
+    def __init__(self, storeLocation="vectorstore", max_history_messages=50):
         print(f"Initializing Inference with storeLocation: {storeLocation}")
-        persist_directory = storeLocation
-        
-        # Use a simple approach for now - just create an empty retriever
-        # In a real implementation, we'd load the vectorstore differently
-        try:
-            vectorstore = Chroma(collection_name="medcopilot", persist_directory=persist_directory, embedding_function=OpenAIEmbeddings())
-            self.retriever = vectorstore.as_retriever()
-            print(f"Vectorstore initialized with documents.")
-        except Exception as e:
-            print(f"Warning: Could not initialize vectorstore: {e}")
-            print("Creating a mock retriever for testing...")
-            # Create a mock retriever that returns empty results
-            self.retriever = MockRetriever()
-        
-        self.llm = ChatOpenAI(model="gpt-4o")
-        self.rag_chains = {}
-        self.promt_categories = PromptCategories()
-        
-        # Initialize conversation history
-        self.conversation_history = []
+        self.storeLocation = storeLocation
         self.max_history_messages = max_history_messages
+        self.conversation_history = []
+        self.retriever = None
+        self.llm = None
+        self.promt_categories = PromptCategories()
 
-    def _format_docs(self, docs):
-        """Join retrieved documents' page_content for prompt context."""
+    # --- Initialize Chroma and LLM lazily ---
+    def _initialize_components(self):
+        """Initialize components only when needed (lazy load)."""
+        if self.retriever and self.llm:
+            return  # Already initialized
+
+        # ✅ Initialize Chroma
         try:
-            return "\n\n".join(getattr(d, "page_content", str(d)) for d in docs)
-        except Exception:
-            # Fallback to string if docs isn't iterable
-            return str(docs)
+            if not os.path.exists(self.storeLocation):
+                print(f"Creating missing vectorstore directory: {self.storeLocation}")
+                os.makedirs(self.storeLocation, exist_ok=True)
 
+            print("Initializing Chroma vectorstore...")
+            vectorstore = Chroma(
+                collection_name="medcopilot",
+                persist_directory=self.storeLocation,
+                embedding_function=OpenAIEmbeddings()
+            )
+            self.retriever = vectorstore.as_retriever()
+            print("✅ Chroma vectorstore initialized successfully.")
+        except Exception as e:
+            print(f"⚠️ Warning: Could not initialize vectorstore: {e}")
+            print("Fallback: Using MockRetriever.")
+            self.retriever = MockRetriever()
+
+        # ✅ Initialize LLM (ChatOpenAI)
+        try:
+            api_key = os.getenv("OPENAI_API_KEY")
+            if not api_key:
+                raise ValueError("Missing OPENAI_API_KEY environment variable.")
+
+            print("Initializing ChatOpenAI model...")
+            self.llm = ChatOpenAI(model="gpt-4o", temperature=0.3)
+            print("✅ ChatOpenAI initialized successfully.")
+        except Exception as e:
+            print(f"⚠️ Warning: Could not initialize ChatOpenAI: {e}")
+            self.llm = None
+
+    # --- Main inference runner ---
     def run_inference(self, query, maintain_history=True):
         print(f"Running inference for query: {query}")
-        results = self.query_reasoning(query, maintain_history)
+        self._initialize_components()
 
-        '''
-        followup_questions = self.generate_followup_questions(query, results)
-        print(f"FollowupQuestion : {followup_questions}")
-        results["followup_questions"] = followup_questions
-        print(f"Results with followup questions: {results}")
-        '''
+        try:
+            results = self.query_reasoning(query, maintain_history)
+        except Exception as e:
+            print(f"❌ Error during inference: {e}")
+            results = {
+                "input": query,
+                "context": [],
+                "answer": "An internal error occurred while generating a response."
+            }
+
         return results
 
+    # --- Reasoning logic ---
     def query_reasoning(self, query, maintain_history=True):
         try:
             prompt_category = self.classify_prompt_category(query)[0]
             system_prompt = self.promt_categories.get_prompt(prompt_category)
-            print(f"System prompt: {system_prompt}")
+            print(f"🧠 System prompt category: {prompt_category}")
 
-            # Build messages with conversation history
             messages = [("system", system_prompt)]
-            
-            # Add conversation history if available
+
+            # Maintain conversation history
             if maintain_history and self.conversation_history:
                 for msg in self.conversation_history:
                     if isinstance(msg, HumanMessage):
                         messages.append(("human", msg.content))
                     elif isinstance(msg, AIMessage):
                         messages.append(("ai", msg.content))
-            
-            # Add current query
+
             messages.append(("human", "{input}"))
-            
-            # Ensure the system message includes a {context} slot for retrieved docs
-            # If not already included, extend it here
+
+            # Add context if missing
             if "{context}" not in messages[0][1]:
                 messages[0] = ("system", f"{messages[0][1]}\n\nContext:\n{{context}}")
 
@@ -128,43 +148,50 @@ class Inference:
             docs = self.retriever.invoke(query)
             
             results = {
+                "input": query,
                 "answer": answer,
                 "context": docs
             }
-            
-            # Update conversation history
+
             if maintain_history:
-                self._update_conversation_history(query, results.get("answer", ""))
-                
+                self._update_conversation_history(query, answer)
+
         except Exception as e:
-            print(f"An error occurred: {e}")
-            results = {"context": "No context available", "answer": "Sorry, I couldn't process your request."}
-        
+            print(f"❌ An error occurred in query_reasoning: {e}")
+            results = {
+                "input": query,
+                "answer": "Sorry, I couldn't process your request.",
+                "context": []
+            }
+
         return results
-    
+
+    # --- Utilities ---
+    def _format_docs(self, docs):
+        try:
+            return "\n\n".join(getattr(d, "page_content", str(d)) for d in docs)
+        except Exception:
+            return str(docs)
+
     def _update_conversation_history(self, query, answer):
-        """Update conversation history with the latest exchange"""
         self.conversation_history.append(HumanMessage(content=query))
         self.conversation_history.append(AIMessage(content=answer))
-        
-        # Trim history to maintain context window
-        # Keep only the last N messages (N = max_history_messages)
         if len(self.conversation_history) > self.max_history_messages:
             self.conversation_history = self.conversation_history[-self.max_history_messages:]
-    
+
     def clear_history(self):
-        """Clear the conversation history"""
         self.conversation_history = []
-        print("Conversation history cleared.")
-    
+        print("🧹 Conversation history cleared.")
+
     def get_history_summary(self):
-        """Get a summary of the current conversation history"""
         return {
             "message_count": len(self.conversation_history),
             "max_messages": self.max_history_messages,
             "history": [
-                {"role": "human" if isinstance(msg, HumanMessage) else "ai", 
-                 "content": msg.content[:100] + "..." if len(msg.content) > 100 else msg.content}
+                {
+                    "role": "human" if isinstance(msg, HumanMessage) else "ai",
+                    "content": msg.content[:100] + "..." if len(msg.content) > 100 else msg.content
+                }
                 for msg in self.conversation_history
             ]
         }
@@ -205,7 +232,6 @@ class Inference:
         classification_template_text = self.promt_categories.get_classification_template()
 
         try:
-            # Create prompt template
             classify_prompt = PromptTemplate(
                 input_variables=["query", "context"],
                 template=classification_template_text,
@@ -219,13 +245,14 @@ class Inference:
                 "context": "No context available"
             })
             return (text or "").strip().split("\n")
-            
-        except Exception as e:   
-            print(f"Error classifying the query: {e}")
+        except Exception as e:
+            print(f"⚠️ Error classifying the query: {e}")
             return categories[0]
-    
+
+
+# --- Local test run ---
 if __name__ == '__main__':
     inference = Inference()
-    response = inference.run_inference("What is the treatment for cancer?")
-    print(response)
-    print("Inference completed.")
+    result = inference.run_inference("What is the treatment for hypertension?")
+    print("Response:", result)
+    print("✅ Inference completed successfully.")
