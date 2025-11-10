@@ -28,5 +28,5 @@ chromadb>=0.5.0
 openai>=1.0.0
 
 # System compatibility
-# typing_extensions==4.15.0
+typing_extensions>=4.12.0
 pysqlite3-binary; platform_system == "Linux"
